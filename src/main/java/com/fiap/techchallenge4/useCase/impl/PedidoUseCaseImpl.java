@@ -1,8 +1,9 @@
 package com.fiap.techchallenge4.useCase.impl;
 
+import com.fiap.techchallenge4.domain.IdPedido;
 import com.fiap.techchallenge4.domain.Pedido;
 import com.fiap.techchallenge4.domain.StatusPedidoEnum;
-import com.fiap.techchallenge4.infrastructure.controller.dto.BaixaNoEstoqueDTO;
+import com.fiap.techchallenge4.infrastructure.controller.dto.AtualizaEstoqueDTO;
 import com.fiap.techchallenge4.infrastructure.controller.dto.CriaPedidoDTO;
 import com.fiap.techchallenge4.infrastructure.model.PedidoEntity;
 import com.fiap.techchallenge4.infrastructure.produto.client.ProdutoClient;
@@ -53,7 +54,7 @@ public class PedidoUseCaseImpl implements PedidoUseCase {
                         .build();
                 this.repository.save(produtoEntity);
 
-                this.streamBridge.send("produto-atualiza-estoque", new BaixaNoEstoqueDTO(dadosPedido.ean(), dadosPedido.quantidade()));
+                this.streamBridge.send("produto-atualiza-estoque", new AtualizaEstoqueDTO(dadosPedido.ean(), dadosPedido.quantidade()));
                 return true;
             }
         } catch (Exception e) {
@@ -61,4 +62,30 @@ public class PedidoUseCaseImpl implements PedidoUseCase {
         }
         return false;
     }
+
+    @Override
+    public boolean cancela(final Long idPedido) {
+        final var idPedidoObjeto = new IdPedido(idPedido);
+
+        final var pedidoNaBase = this.repository.findByIdAndStatusPedido(idPedidoObjeto.getNumero(), StatusPedidoEnum.CRIADO);
+        if(pedidoNaBase.isEmpty()) {
+            System.out.println("Pedido não está cadastrado");
+            return false;
+        }
+        final var pedido = pedidoNaBase.get();
+
+        final var produtoEntity = PedidoEntity.builder()
+                .id(idPedidoObjeto.getNumero())
+                .cpfCliente(pedido.getCpfCliente())
+                .ean(pedido.getEan())
+                .quantidade(pedido.getQuantidade())
+                .statusPedido(StatusPedidoEnum.CANCELADO)
+                .dataDeCriacao(LocalDateTime.now())
+                .build();
+        this.repository.save(produtoEntity);
+        this.streamBridge.send("produto-atualiza-estoque", new AtualizaEstoqueDTO(pedido.getEan(), pedido.getQuantidade()));
+        return true;
+
+    }
+
 }

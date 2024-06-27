@@ -2,14 +2,16 @@ package com.fiap.techchallenge4.integrados;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fiap.techchallenge4.domain.StatusPedidoEnum;
-import com.fiap.techchallenge4.infrastructure.controller.dto.BaixaNoEstoqueDTO;
+import com.fiap.techchallenge4.infrastructure.controller.dto.AtualizaEstoqueDTO;
 import com.fiap.techchallenge4.infrastructure.controller.dto.CriaPedidoDTO;
+import com.fiap.techchallenge4.infrastructure.model.PedidoEntity;
 import com.fiap.techchallenge4.infrastructure.produto.client.ProdutoClient;
 import com.fiap.techchallenge4.infrastructure.repository.PedidoRepository;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -21,9 +23,11 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
+import java.time.LocalDateTime;
 import java.util.stream.Stream;
 
 import static com.fiap.techchallenge4.infrastructure.controller.PedidoController.URL_PEDIDOS;
+import static com.fiap.techchallenge4.infrastructure.controller.PedidoController.URL_PEDIDOS_COM_ID;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -66,7 +70,7 @@ public class PedidoControllerIT {
                 .thenReturn(
                         true
                 );
-        Mockito.when(this.streamBridge.send("produto-atualiza-estoque", new BaixaNoEstoqueDTO(7894900011517L, 3L)))
+        Mockito.when(this.streamBridge.send("produto-atualiza-estoque", new AtualizaEstoqueDTO(7894900011517L, 3L)))
                 .thenReturn(
                         true
                 );
@@ -107,7 +111,7 @@ public class PedidoControllerIT {
                 .thenReturn(
                         false
                 );
-        Mockito.when(this.streamBridge.send("produto-atualiza-estoque", new BaixaNoEstoqueDTO(7894900011517L, 3L)))
+        Mockito.when(this.streamBridge.send("produto-atualiza-estoque", new AtualizaEstoqueDTO(7894900011517L, 3L)))
                 .thenReturn(
                         true
                 );
@@ -143,7 +147,7 @@ public class PedidoControllerIT {
                 )
                 .when(this.client)
                 .temEstoque(7894900011517L, 3L);
-        Mockito.when(this.streamBridge.send("produto-atualiza-estoque", new BaixaNoEstoqueDTO(7894900011517L, 3L)))
+        Mockito.when(this.streamBridge.send("produto-atualiza-estoque", new AtualizaEstoqueDTO(7894900011517L, 3L)))
                 .thenReturn(
                         true
                 );
@@ -178,7 +182,7 @@ public class PedidoControllerIT {
                 .thenReturn(
                         null
                 );
-        Mockito.when(this.streamBridge.send("produto-atualiza-estoque", new BaixaNoEstoqueDTO(7894900011517L, 3L)))
+        Mockito.when(this.streamBridge.send("produto-atualiza-estoque", new AtualizaEstoqueDTO(7894900011517L, 3L)))
                 .thenReturn(
                         true
                 );
@@ -207,6 +211,100 @@ public class PedidoControllerIT {
         verify(streamBridge, times(0)).send(Mockito.any(), Mockito.any());
     }
 
+    @Test
+    public void cancela_deveRetornar200_salvaNaBaseDeDados() throws Exception {
+        Mockito.when(this.streamBridge.send("produto-volta-estoque", new AtualizaEstoqueDTO(7894900011517L, 3L)))
+                .thenReturn(
+                        true
+                );
+
+        final var pedido = PedidoEntity.builder()
+                .cpfCliente("71622958004")
+                .ean(7894900011517L)
+                .quantidade(30L)
+                .statusPedido(StatusPedidoEnum.CRIADO)
+                .dataDeCriacao(LocalDateTime.now())
+                .build();
+        final var pedidoSalvo = this.repository.save(pedido);
+
+        this.mockMvc
+                .perform(MockMvcRequestBuilders.delete(URL_PEDIDOS_COM_ID.replace("{idPedido}", pedidoSalvo.getId().toString()))
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(MockMvcResultMatchers
+                        .status()
+                        .isOk()
+                )
+                .andReturn();
+
+        final var pedidoEntity = this.repository.findAll().get(0);
+
+        Assertions.assertEquals(1, this.repository.findAll().size());
+        Assertions.assertEquals(pedidoSalvo.getId(), pedidoEntity.getId());
+        Assertions.assertEquals("71622958004", pedidoEntity.getCpfCliente());
+        Assertions.assertEquals(7894900011517L, pedidoEntity.getEan());
+        Assertions.assertEquals(30L, pedidoEntity.getQuantidade());
+        Assertions.assertEquals(StatusPedidoEnum.CANCELADO, pedidoEntity.getStatusPedido());
+        Assertions.assertNotNull(pedidoEntity.getDataDeCriacao());
+        verify(streamBridge, times(1)).send(Mockito.any(), Mockito.any());
+    }
+
+    @Test
+    public void cancela_deveRetornar204_naoSalvaNaBaseDeDados_statusPedidoDiferenteDeCriado() throws Exception {
+        Mockito.when(this.streamBridge.send("produto-volta-estoque", new AtualizaEstoqueDTO(7894900011517L, 3L)))
+                .thenReturn(
+                        true
+                );
+
+        final var pedido = PedidoEntity.builder()
+                .cpfCliente("71622958004")
+                .ean(7894900011517L)
+                .quantidade(30L)
+                .statusPedido(StatusPedidoEnum.EM_TRANSPORTE)
+                .dataDeCriacao(LocalDateTime.now())
+                .build();
+        final var pedidoSalvo = this.repository.save(pedido);
+
+        this.mockMvc
+                .perform(MockMvcRequestBuilders.delete(URL_PEDIDOS_COM_ID.replace("{idPedido}", pedidoSalvo.getId().toString()))
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(MockMvcResultMatchers
+                        .status()
+                        .isNoContent()
+                )
+                .andReturn();
+
+        final var pedidoEntity = this.repository.findAll().get(0);
+
+        Assertions.assertEquals(1, this.repository.findAll().size());
+        Assertions.assertEquals(pedidoSalvo.getId(), pedidoEntity.getId());
+        Assertions.assertEquals("71622958004", pedidoEntity.getCpfCliente());
+        Assertions.assertEquals(7894900011517L, pedidoEntity.getEan());
+        Assertions.assertEquals(30L, pedidoEntity.getQuantidade());
+        Assertions.assertEquals(StatusPedidoEnum.EM_TRANSPORTE, pedidoEntity.getStatusPedido());
+        Assertions.assertNotNull(pedidoEntity.getDataDeCriacao());
+        verify(streamBridge, times(0)).send(Mockito.any(), Mockito.any());
+    }
+
+    @Test
+    public void cancela_deveRetornar204_naoSalvaNaBaseDeDados_pedidoNaoEncontrado() throws Exception {
+        Mockito.when(this.streamBridge.send("produto-volta-estoque", new AtualizaEstoqueDTO(7894900011517L, 3L)))
+                .thenReturn(
+                        true
+                );
+
+        this.mockMvc
+                .perform(MockMvcRequestBuilders.delete(URL_PEDIDOS_COM_ID.replace("{idPedido}", "1"))
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(MockMvcResultMatchers
+                        .status()
+                        .isNoContent()
+                )
+                .andReturn();
+
+        Assertions.assertEquals(0, this.repository.findAll().size());
+        verify(streamBridge, times(0)).send(Mockito.any(), Mockito.any());
+    }
+
     @ParameterizedTest
     @MethodSource("requestValidandoCampos")
     public void cria_camposInvalidos_naoSalvaNaBaseDeDados(Long ean,
@@ -225,6 +323,23 @@ public class PedidoControllerIT {
         this.mockMvc
                 .perform(MockMvcRequestBuilders.post(URL_PEDIDOS)
                         .content(jsonRequest)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(MockMvcResultMatchers
+                        .status()
+                        .isBadRequest()
+                );
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {
+            -1000,
+            -1L,
+            0
+    })
+    public void cancela_camposInvalidos_naoSalvaNaBaseDeDados(Long idPedido) throws Exception {
+
+        this.mockMvc
+                .perform(MockMvcRequestBuilders.delete(URL_PEDIDOS_COM_ID.replace("{idPedido}", idPedido.toString()))
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(MockMvcResultMatchers
                         .status()
