@@ -8,12 +8,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 import org.springframework.http.HttpStatus;
 
 import java.util.stream.Stream;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 
 public class PedidoControllerTest {
 
@@ -71,6 +73,48 @@ public class PedidoControllerTest {
         Assertions.assertEquals(HttpStatus.CONFLICT, produto.getStatusCode());
     }
 
+    @Test
+    public void cancela_deveRetornar200_salvaNaBaseDeDados() {
+        // preparação
+        var service = Mockito.mock(PedidoUseCaseImpl.class);
+        Mockito.when(service.cancela(
+                                anyLong()
+                        )
+                )
+                .thenReturn(
+                        true
+                );
+
+        var controller = new PedidoController(service);
+
+        // execução
+        var produto = controller.cancela(1L);
+
+        // avaliação
+        Assertions.assertEquals(HttpStatus.OK, produto.getStatusCode());
+    }
+
+    @Test
+    public void cancela_deveRetornar204_naoSalvaNaBaseDeDados() {
+        // preparação
+        var service = Mockito.mock(PedidoUseCaseImpl.class);
+        Mockito.when(service.cancela(
+                                anyLong()
+                        )
+                )
+                .thenReturn(
+                        false
+                );
+
+        var controller = new PedidoController(service);
+
+        // execução
+        var produto = controller.cancela(1L);
+
+        // avaliação
+        Assertions.assertEquals(HttpStatus.NO_CONTENT, produto.getStatusCode());
+    }
+
     @ParameterizedTest
     @MethodSource("requestValidandoCampos")
     public void cria_camposInvalidos_naoSalvaNaBaseDeDados(Long ean,
@@ -97,6 +141,31 @@ public class PedidoControllerTest {
                             quantidade
                     )
             );
+        });
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {
+            -1000,
+            -1L,
+            0
+    })
+    public void cancela_camposInvalidos_naoSalvaNaBaseDeDados(Long idPedido) {
+        // preparação
+        var service = Mockito.mock(PedidoUseCaseImpl.class);
+        Mockito.doThrow(
+                        new IllegalArgumentException("Campos inválidos!")
+                )
+                .when(service)
+                .cancela(
+                        anyLong()
+                );
+
+        var controller = new PedidoController(service);
+
+        // execução e avaliação
+        var excecao = Assertions.assertThrows(IllegalArgumentException.class, () -> {
+            controller.cancela(idPedido);
         });
     }
 

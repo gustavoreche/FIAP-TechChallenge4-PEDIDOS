@@ -11,10 +11,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 import org.springframework.cloud.stream.function.StreamBridge;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 import static org.mockito.Mockito.times;
@@ -151,6 +153,93 @@ public class PedidoUseCaseTest {
         Assertions.assertFalse(cria);
     }
 
+    @Test
+    public void cancela_salvaNaBaseDeDados() {
+        // preparação
+        var client = Mockito.mock(ProdutoClient.class);
+        var streamBridge = Mockito.mock(StreamBridge.class);
+        var repository = Mockito.mock(PedidoRepository.class);
+
+        Mockito.when(repository.save(Mockito.any()))
+                .thenReturn(
+                        new PedidoEntity(
+                                1L,
+                                "71622958004",
+                                7894900011517L,
+                                100L,
+                                StatusPedidoEnum.CRIADO,
+                                LocalDateTime.now()
+                        )
+                );
+        Mockito.when(repository.findByIdAndStatusPedido(Mockito.any(), Mockito.any()))
+                .thenReturn(
+                        Optional.of(
+                                new PedidoEntity(
+                                        1L,
+                                        "71622958004",
+                                        7894900011517L,
+                                        100L,
+                                        StatusPedidoEnum.CRIADO,
+                                        LocalDateTime.now()
+                                )
+                        )
+                );
+
+        Mockito.when(streamBridge.send(Mockito.any(), Mockito.any()))
+                .thenReturn(true);
+
+        var service = new PedidoUseCaseImpl(client, streamBridge, repository);
+
+        // execução
+        boolean cria = service.cancela(1L);
+
+        // avaliação
+        verify(repository, times(1)).findByIdAndStatusPedido(Mockito.any(), Mockito.any());
+        verify(repository, times(1)).save(Mockito.any());
+        verify(streamBridge, times(1)).send(Mockito.any(), Mockito.any());
+
+        Assertions.assertTrue(cria);
+    }
+
+    @Test
+    public void cancela_naoSalvaNaBaseDeDados_statusPedidoDiferenteDeCriadoOuPedidoNaoEncontrado() {
+        // preparação
+        var client = Mockito.mock(ProdutoClient.class);
+        var streamBridge = Mockito.mock(StreamBridge.class);
+        var repository = Mockito.mock(PedidoRepository.class);
+
+        Mockito.when(repository.save(Mockito.any()))
+                .thenReturn(
+                        new PedidoEntity(
+                                1L,
+                                "71622958004",
+                                7894900011517L,
+                                100L,
+                                StatusPedidoEnum.EM_TRANSPORTE,
+                                LocalDateTime.now()
+                        )
+                );
+        Mockito.when(repository.findByIdAndStatusPedido(Mockito.any(), Mockito.any()))
+                .thenReturn(
+                        Optional.empty()
+                );
+
+        Mockito.when(streamBridge.send(Mockito.any(), Mockito.any()))
+                .thenReturn(true);
+
+        var service = new PedidoUseCaseImpl(client, streamBridge, repository);
+
+        // execução
+        boolean cria = service.cancela(1L);
+
+        // avaliação
+        verify(repository, times(1)).findByIdAndStatusPedido(Mockito.any(), Mockito.any());
+        verify(repository, times(0)).save(Mockito.any());
+        verify(streamBridge, times(0)).send(Mockito.any(), Mockito.any());
+
+        Assertions.assertFalse(cria);
+    }
+
     @ParameterizedTest
     @MethodSource("requestValidandoCampos")
     public void cria_camposInvalidos_naoSalvaNaBaseDeDados(Long ean,
@@ -191,6 +280,46 @@ public class PedidoUseCaseTest {
                     )
             );
         });
+        verify(repository, times(0)).save(Mockito.any());
+        verify(streamBridge, times(0)).send(Mockito.any(), Mockito.any());
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {
+            -1000,
+            -1L,
+            0
+    })
+    public void cancela_camposInvalidos_naoBuscaNaBaseDeDados(Long idPedido) {
+        // preparação
+        var client = Mockito.mock(ProdutoClient.class);
+        var streamBridge = Mockito.mock(StreamBridge.class);
+        var repository = Mockito.mock(PedidoRepository.class);
+
+        Mockito.when(repository.save(Mockito.any()))
+                .thenReturn(
+                        new PedidoEntity(
+                                1L,
+                                "71622958004",
+                                7894900011517L,
+                                100L,
+                                StatusPedidoEnum.CRIADO,
+                                LocalDateTime.now()
+                        )
+                );
+
+        Mockito.when(streamBridge.send(Mockito.any(), Mockito.any()))
+                .thenReturn(true);
+
+        var service = new PedidoUseCaseImpl(client, streamBridge, repository);
+
+        // execução e avaliação
+        var excecao = Assertions.assertThrows(RuntimeException.class, () -> {
+            service.cancela(
+                    idPedido == -1000 ? null : idPedido
+            );
+        });
+        verify(repository, times(0)).findByIdAndStatusPedido(Mockito.any(), Mockito.any());
         verify(repository, times(0)).save(Mockito.any());
         verify(streamBridge, times(0)).send(Mockito.any(), Mockito.any());
     }

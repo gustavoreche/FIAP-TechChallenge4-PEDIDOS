@@ -1,8 +1,9 @@
 version: "3.8"
 
 services:
-  db:
+  db-pedido:
     image: postgres:16.2
+    hostname: db-pedido
     container_name: "containerBancoDeDadosPedidos"
     environment:
       POSTGRES_USER: root
@@ -20,18 +21,21 @@ services:
       - "5672:5672"
       - "15672:15672"
     depends_on:
-      - db
+      - db-pedido
     volumes:
       - ~/.docker-conf/rabbitmq/data/:/var/lib/rabbitmq/
       - ~/.docker-conf/rabbitmq/log/:/var/log/rabbitmq
 
-  app:
+  app-pedido:
     build:
       context: .
       dockerfile: Dockerfile
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     container_name: app-sistema-pedido
     environment:
-      POSTGRES_HOST: db:5432
+      POSTGRES_HOST: db-pedido:5432
+      RABBITMQ_HOST: rabbitmq
     ports:
       - "8081:8081"
     depends_on:
