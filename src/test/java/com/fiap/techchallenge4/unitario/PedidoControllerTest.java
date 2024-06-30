@@ -115,6 +115,48 @@ public class PedidoControllerTest {
         Assertions.assertEquals(HttpStatus.NO_CONTENT, produto.getStatusCode());
     }
 
+    @Test
+    public void atualizaParaEmTransporte_deveRetornar200_salvaNaBaseDeDados() {
+        // preparação
+        var service = Mockito.mock(PedidoUseCaseImpl.class);
+        Mockito.when(service.atualizaParaEmTransporte(
+                                anyLong()
+                        )
+                )
+                .thenReturn(
+                        true
+                );
+
+        var controller = new PedidoController(service);
+
+        // execução
+        var produto = controller.atualizaEmTransporte(1L);
+
+        // avaliação
+        Assertions.assertEquals(HttpStatus.OK, produto.getStatusCode());
+    }
+
+    @Test
+    public void atualizaParaEmTransporte_deveRetornar204_naoSalvaNaBaseDeDados() {
+        // preparação
+        var service = Mockito.mock(PedidoUseCaseImpl.class);
+        Mockito.when(service.atualizaParaEmTransporte(
+                                anyLong()
+                        )
+                )
+                .thenReturn(
+                        false
+                );
+
+        var controller = new PedidoController(service);
+
+        // execução
+        var produto = controller.atualizaEmTransporte(1L);
+
+        // avaliação
+        Assertions.assertEquals(HttpStatus.NO_CONTENT, produto.getStatusCode());
+    }
+
     @ParameterizedTest
     @MethodSource("requestValidandoCampos")
     public void cria_camposInvalidos_naoSalvaNaBaseDeDados(Long ean,
@@ -166,6 +208,31 @@ public class PedidoControllerTest {
         // execução e avaliação
         var excecao = Assertions.assertThrows(IllegalArgumentException.class, () -> {
             controller.cancela(idPedido);
+        });
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {
+            -1000,
+            -1L,
+            0
+    })
+    public void atualizaParaEmTransporte_camposInvalidos_naoSalvaNaBaseDeDados(Long idPedido) {
+        // preparação
+        var service = Mockito.mock(PedidoUseCaseImpl.class);
+        Mockito.doThrow(
+                        new IllegalArgumentException("Campos inválidos!")
+                )
+                .when(service)
+                .atualizaParaEmTransporte(
+                        anyLong()
+                );
+
+        var controller = new PedidoController(service);
+
+        // execução e avaliação
+        var excecao = Assertions.assertThrows(IllegalArgumentException.class, () -> {
+            controller.atualizaEmTransporte(idPedido);
         });
     }
 

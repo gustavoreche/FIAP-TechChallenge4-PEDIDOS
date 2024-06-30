@@ -62,7 +62,7 @@ public class PedidoUseCaseTest {
 
         // avaliação
         verify(repository, times(1)).save(Mockito.any());
-        verify(streamBridge, times(1)).send(Mockito.any(), Mockito.any());
+        verify(streamBridge, times(2)).send(Mockito.any(), Mockito.any());
 
         Assertions.assertTrue(cria);
     }
@@ -196,7 +196,7 @@ public class PedidoUseCaseTest {
         // avaliação
         verify(repository, times(1)).findByIdAndStatusPedido(Mockito.any(), Mockito.any());
         verify(repository, times(1)).save(Mockito.any());
-        verify(streamBridge, times(1)).send(Mockito.any(), Mockito.any());
+        verify(streamBridge, times(2)).send(Mockito.any(), Mockito.any());
 
         Assertions.assertTrue(cria);
     }
@@ -239,6 +239,88 @@ public class PedidoUseCaseTest {
 
         Assertions.assertFalse(cria);
     }
+
+    @Test
+    public void atualizaParaEmTransporte_salvaNaBaseDeDados() {
+        // preparação
+        var client = Mockito.mock(ProdutoClient.class);
+        var streamBridge = Mockito.mock(StreamBridge.class);
+        var repository = Mockito.mock(PedidoRepository.class);
+
+        Mockito.when(repository.save(Mockito.any()))
+                .thenReturn(
+                        new PedidoEntity(
+                                1L,
+                                "71622958004",
+                                7894900011517L,
+                                100L,
+                                StatusPedidoEnum.CRIADO,
+                                LocalDateTime.now()
+                        )
+                );
+        Mockito.when(repository.findByIdAndStatusPedido(Mockito.any(), Mockito.any()))
+                .thenReturn(
+                        Optional.of(
+                                new PedidoEntity(
+                                        1L,
+                                        "71622958004",
+                                        7894900011517L,
+                                        100L,
+                                        StatusPedidoEnum.CRIADO,
+                                        LocalDateTime.now()
+                                )
+                        )
+                );
+
+        var service = new PedidoUseCaseImpl(client, streamBridge, repository);
+
+        // execução
+        boolean atualiza = service.atualizaParaEmTransporte(1L);
+
+        // avaliação
+        verify(repository, times(1)).findByIdAndStatusPedido(Mockito.any(), Mockito.any());
+        verify(repository, times(1)).save(Mockito.any());
+        verify(streamBridge, times(0)).send(Mockito.any(), Mockito.any());
+
+        Assertions.assertTrue(atualiza);
+    }
+
+    @Test
+    public void atualizaParaEmTransporte_naoSalvaNaBaseDeDados_statusPedidoDiferenteDeCriadoOuPedidoNaoEncontrado() {
+        // preparação
+        var client = Mockito.mock(ProdutoClient.class);
+        var streamBridge = Mockito.mock(StreamBridge.class);
+        var repository = Mockito.mock(PedidoRepository.class);
+
+        Mockito.when(repository.save(Mockito.any()))
+                .thenReturn(
+                        new PedidoEntity(
+                                1L,
+                                "71622958004",
+                                7894900011517L,
+                                100L,
+                                StatusPedidoEnum.EM_TRANSPORTE,
+                                LocalDateTime.now()
+                        )
+                );
+        Mockito.when(repository.findByIdAndStatusPedido(Mockito.any(), Mockito.any()))
+                .thenReturn(
+                        Optional.empty()
+                );
+
+        var service = new PedidoUseCaseImpl(client, streamBridge, repository);
+
+        // execução
+        boolean atualiza = service.atualizaParaEmTransporte(1L);
+
+        // avaliação
+        verify(repository, times(1)).findByIdAndStatusPedido(Mockito.any(), Mockito.any());
+        verify(repository, times(0)).save(Mockito.any());
+        verify(streamBridge, times(0)).send(Mockito.any(), Mockito.any());
+
+        Assertions.assertFalse(atualiza);
+    }
+
 
     @ParameterizedTest
     @MethodSource("requestValidandoCampos")
@@ -316,6 +398,43 @@ public class PedidoUseCaseTest {
         // execução e avaliação
         var excecao = Assertions.assertThrows(RuntimeException.class, () -> {
             service.cancela(
+                    idPedido == -1000 ? null : idPedido
+            );
+        });
+        verify(repository, times(0)).findByIdAndStatusPedido(Mockito.any(), Mockito.any());
+        verify(repository, times(0)).save(Mockito.any());
+        verify(streamBridge, times(0)).send(Mockito.any(), Mockito.any());
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {
+            -1000,
+            -1L,
+            0
+    })
+    public void atualizaParaEmTransporte_camposInvalidos_naoBuscaNaBaseDeDados(Long idPedido) {
+        // preparação
+        var client = Mockito.mock(ProdutoClient.class);
+        var streamBridge = Mockito.mock(StreamBridge.class);
+        var repository = Mockito.mock(PedidoRepository.class);
+
+        Mockito.when(repository.save(Mockito.any()))
+                .thenReturn(
+                        new PedidoEntity(
+                                1L,
+                                "71622958004",
+                                7894900011517L,
+                                100L,
+                                StatusPedidoEnum.CRIADO,
+                                LocalDateTime.now()
+                        )
+                );
+
+        var service = new PedidoUseCaseImpl(client, streamBridge, repository);
+
+        // execução e avaliação
+        var excecao = Assertions.assertThrows(RuntimeException.class, () -> {
+            service.atualizaParaEmTransporte(
                     idPedido == -1000 ? null : idPedido
             );
         });

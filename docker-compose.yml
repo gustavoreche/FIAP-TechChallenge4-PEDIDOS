@@ -16,6 +16,8 @@ services:
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     container_name: 'containerRabbitMQ'
     ports:
       - "5672:5672"

@@ -2,9 +2,11 @@ package com.fiap.techchallenge4.useCase.impl;
 
 import com.fiap.techchallenge4.domain.IdPedido;
 import com.fiap.techchallenge4.domain.Pedido;
+import com.fiap.techchallenge4.domain.StatusEstoqueEnum;
 import com.fiap.techchallenge4.domain.StatusPedidoEnum;
 import com.fiap.techchallenge4.infrastructure.controller.dto.AtualizaEstoqueDTO;
 import com.fiap.techchallenge4.infrastructure.controller.dto.CriaPedidoDTO;
+import com.fiap.techchallenge4.infrastructure.controller.dto.PreparaEntregaDTO;
 import com.fiap.techchallenge4.infrastructure.model.PedidoEntity;
 import com.fiap.techchallenge4.infrastructure.produto.client.ProdutoClient;
 import com.fiap.techchallenge4.infrastructure.repository.PedidoRepository;
@@ -40,7 +42,6 @@ public class PedidoUseCaseImpl implements PedidoUseCase {
         try {
             // TODO: falta verificar se o cliente existe
 
-            //TODO: esse endpoint "temEstoque", pode devolver CODIGO 200(com resposta TRUE ou FALSE), CODIGO 204, E CODIGO 500
             final var temEstoque = this.client.temEstoque(pedido.getEan(), pedido.getQuantidade());
             if(Objects.nonNull(temEstoque) && temEstoque) {
                 System.out.println("Pedido criado com sucesso");
@@ -54,7 +55,19 @@ public class PedidoUseCaseImpl implements PedidoUseCase {
                         .build();
                 this.repository.save(produtoEntity);
 
-                this.streamBridge.send("produto-atualiza-estoque", new AtualizaEstoqueDTO(dadosPedido.ean(), dadosPedido.quantidade()));
+                this.streamBridge.send("produto-atualiza-estoque", new AtualizaEstoqueDTO(
+                        dadosPedido.ean(),
+                        dadosPedido.quantidade(),
+                        StatusEstoqueEnum.RETIRA_DO_ESTOQUE
+                        )
+                );
+
+                this.streamBridge.send("logistica-prepara-entrega", new PreparaEntregaDTO(
+                        dadosPedido.cpfCliente(),
+                        dadosPedido.ean(),
+                        dadosPedido.quantidade()
+                        )
+                );
                 return true;
             }
         } catch (Exception e) {
@@ -83,9 +96,42 @@ public class PedidoUseCaseImpl implements PedidoUseCase {
                 .dataDeCriacao(LocalDateTime.now())
                 .build();
         this.repository.save(produtoEntity);
-        this.streamBridge.send("produto-atualiza-estoque", new AtualizaEstoqueDTO(pedido.getEan(), pedido.getQuantidade()));
+        this.streamBridge.send("produto-atualiza-estoque", new AtualizaEstoqueDTO(
+                pedido.getEan(),
+                pedido.getQuantidade(),
+                StatusEstoqueEnum.VOLTA_PARA_O_ESTOQUE));
+
+        this.streamBridge.send("logistica-prepara-entrega", new PreparaEntregaDTO(
+                produtoEntity.getCpfCliente(),
+                produtoEntity.getEan(),
+                produtoEntity.getQuantidade()
+                )
+        );
         return true;
 
+    }
+
+    @Override
+    public boolean atualizaParaEmTransporte(final Long idPedido) {
+        final var idPedidoObjeto = new IdPedido(idPedido);
+
+        final var pedidoNaBase = this.repository.findByIdAndStatusPedido(idPedidoObjeto.getNumero(), StatusPedidoEnum.CRIADO);
+        if(pedidoNaBase.isEmpty()) {
+            System.out.println("Pedido não está cadastrado ou está com outros STATUS");
+            return false;
+        }
+        final var pedido = pedidoNaBase.get();
+
+        final var produtoEntity = PedidoEntity.builder()
+                .id(idPedidoObjeto.getNumero())
+                .cpfCliente(pedido.getCpfCliente())
+                .ean(pedido.getEan())
+                .quantidade(pedido.getQuantidade())
+                .statusPedido(StatusPedidoEnum.EM_TRANSPORTE)
+                .dataDeCriacao(LocalDateTime.now())
+                .build();
+        this.repository.save(produtoEntity);
+        return true;
     }
 
 }
