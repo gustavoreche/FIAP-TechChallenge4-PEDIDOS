@@ -1,6 +1,7 @@
 package com.fiap.techchallenge4.infrastructure.controller;
 
 
+import com.fiap.techchallenge4.domain.StatusPedidoEnum;
 import com.fiap.techchallenge4.infrastructure.controller.dto.CriaPedidoDTO;
 import com.fiap.techchallenge4.useCase.PedidoUseCase;
 import io.swagger.v3.oas.annotations.Operation;
@@ -61,20 +62,20 @@ public class PedidoController {
                 .build();
     }
 
-//    @Operation(
-//            summary = "Serviço para atualizar o status de um pedido"
-//    )
-//    @PostMapping
-//    public ResponseEntity<Void> atualiza(@RequestBody @Valid final CriaPedidoDTO dadosPedido) {
-//        final var criou = this.service.cria(dadosPedido);
-//        if(criou) {
-//            return ResponseEntity
-//                    .status(HttpStatus.CREATED)
-//                    .build();
-//        }
-//        return ResponseEntity
-//                .status(HttpStatus.CONFLICT)
-//                .build();
-//    }
+    @Operation(
+            summary = "Serviço para atualizar o status de um pedido para EM TRANSPORTE"
+    )
+    @PutMapping("/{idPedido}")
+    public ResponseEntity<Void> atualizaEmTransporte(@PathVariable("idPedido") final Long idPedido) {
+        final var atualizou = this.service.atualizaParaEmTransporte(idPedido);
+        if(atualizou) {
+            return ResponseEntity
+                    .status(HttpStatus.OK)
+                    .build();
+        }
+        return ResponseEntity
+                .status(HttpStatus.NO_CONTENT)
+                .build();
+    }
 
 }
