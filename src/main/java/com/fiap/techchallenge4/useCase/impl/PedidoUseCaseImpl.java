@@ -53,7 +53,7 @@ public class PedidoUseCaseImpl implements PedidoUseCase {
                         .statusPedido(StatusPedidoEnum.CRIADO)
                         .dataDeCriacao(LocalDateTime.now())
                         .build();
-                this.repository.save(produtoEntity);
+                final var pedidoSalvoNaBase = this.repository.save(produtoEntity);
 
                 this.streamBridge.send("produto-atualiza-estoque", new AtualizaEstoqueDTO(
                         dadosPedido.ean(),
@@ -63,6 +63,7 @@ public class PedidoUseCaseImpl implements PedidoUseCase {
                 );
 
                 this.streamBridge.send("logistica-prepara-entrega", new PreparaEntregaDTO(
+                        pedidoSalvoNaBase.getId(),
                         dadosPedido.cpfCliente(),
                         dadosPedido.ean(),
                         dadosPedido.quantidade()
@@ -102,6 +103,7 @@ public class PedidoUseCaseImpl implements PedidoUseCase {
                 StatusEstoqueEnum.VOLTA_PARA_O_ESTOQUE));
 
         this.streamBridge.send("logistica-prepara-entrega", new PreparaEntregaDTO(
+                idPedido,
                 produtoEntity.getCpfCliente(),
                 produtoEntity.getEan(),
                 produtoEntity.getQuantidade()

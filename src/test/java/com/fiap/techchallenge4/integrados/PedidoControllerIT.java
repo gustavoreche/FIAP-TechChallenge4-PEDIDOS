@@ -80,6 +80,7 @@ public class PedidoControllerIT {
                         true
                 );
         Mockito.when(this.streamBridge.send("logistica-prepara-entrega", new PreparaEntregaDTO(
+                        1L,
                         "71622958004",
                         7894900011517L,
                         1L)))
@@ -132,6 +133,7 @@ public class PedidoControllerIT {
                         true
                 );
         Mockito.when(this.streamBridge.send("logistica-prepara-entrega", new PreparaEntregaDTO(
+                        1L,
                         "71622958004",
                         7894900011517L,
                         1L)))
@@ -178,6 +180,7 @@ public class PedidoControllerIT {
                         true
                 );
         Mockito.when(this.streamBridge.send("logistica-prepara-entrega", new PreparaEntregaDTO(
+                        1L,
                         "71622958004",
                         7894900011517L,
                         1L)))
@@ -223,6 +226,7 @@ public class PedidoControllerIT {
                         true
                 );
         Mockito.when(this.streamBridge.send("logistica-prepara-entrega", new PreparaEntregaDTO(
+                        1L,
                         "71622958004",
                         7894900011517L,
                         1L)))
@@ -264,6 +268,7 @@ public class PedidoControllerIT {
                         true
                 );
         Mockito.when(this.streamBridge.send("logistica-prepara-entrega", new PreparaEntregaDTO(
+                        1L,
                         "71622958004",
                         7894900011517L,
                        1L)))
@@ -311,6 +316,7 @@ public class PedidoControllerIT {
                         true
                 );
         Mockito.when(this.streamBridge.send("logistica-prepara-entrega", new PreparaEntregaDTO(
+                        1L,
                         "71622958004",
                         7894900011517L,
                         1L)))
@@ -358,6 +364,7 @@ public class PedidoControllerIT {
                         true
                 );
         Mockito.when(this.streamBridge.send("logistica-prepara-entrega", new PreparaEntregaDTO(
+                        1L,
                         "71622958004",
                         7894900011517L,
                         1L)))
@@ -521,12 +528,12 @@ public class PedidoControllerIT {
                 Arguments.of(null, "71622958004", 100L),
                 Arguments.of(-1L, "71622958004", 100L),
                 Arguments.of(0L, "71622958004", 100L),
-                Arguments.of(0L, null, 100L),
-                Arguments.of(0L, "", 100L),
-                Arguments.of(0L, " ", 100L),
-                Arguments.of(0L, "teste", 100L),
-                Arguments.of(0L, "1234567891", 100L),
-                Arguments.of(0L, "123456789123", 100L),
+                Arguments.of(123456789L, null, 100L),
+                Arguments.of(123456789L, "", 100L),
+                Arguments.of(123456789L, " ", 100L),
+                Arguments.of(123456789L, "teste", 100L),
+                Arguments.of(123456789L, "1234567891", 100L),
+                Arguments.of(123456789L, "123456789123", 100L),
                 Arguments.of(123456789L, "71622958004", null),
                 Arguments.of(123456789L, "71622958004", -1L),
                 Arguments.of(123456789L, "71622958004", 0L),
