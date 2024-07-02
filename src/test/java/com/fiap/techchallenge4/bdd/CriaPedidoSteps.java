@@ -21,7 +21,8 @@ public class CriaPedidoSteps {
     private Response response;
     private CriaPedidoDTO request;
     private Long ean;
-    private ClientAndServer mockServer;
+    private ClientAndServer mockServerProduto;
+    private ClientAndServer mockServerCliente;
 
     @Dado("que informo os dados do pedido")
     public void queInformoOsDadosDoPedido() {
@@ -32,8 +33,23 @@ public class CriaPedidoSteps {
                 1L
         );
 
-        this.mockServer = this.criaMockServer();
+        this.mockServerProduto = this.criaMockServerProduto();
+        this.mockServerCliente = this.criaMockServerCliente();
     }
+
+    @Dado("que informo um cliente não cadastrado")
+    public void queInformoUmClienteNaoCadastrado() {
+        this.ean = System.currentTimeMillis();
+        this.request = new CriaPedidoDTO(
+                this.ean,
+                "12345678901",
+                2L
+        );
+
+        this.mockServerProduto = this.criaMockServerProduto();
+        this.mockServerCliente = this.criaMockServerCliente();
+    }
+
 
     @Dado("que informo um produto sem estoque")
     public void queInformoUmProdutoSemEstoque() {
@@ -44,7 +60,8 @@ public class CriaPedidoSteps {
                 2L
         );
 
-        this.mockServer = this.criaMockServer();
+        this.mockServerProduto = this.criaMockServerProduto();
+        this.mockServerCliente = this.criaMockServerCliente();
     }
 
     @Dado("que informo um produto que não existe")
@@ -56,7 +73,8 @@ public class CriaPedidoSteps {
                 3L
         );
 
-        this.mockServer = this.criaMockServer();
+        this.mockServerProduto = this.criaMockServerProduto();
+        this.mockServerCliente = this.criaMockServerCliente();
     }
 
     @Quando("crio esse pedido")
@@ -77,7 +95,8 @@ public class CriaPedidoSteps {
                 .statusCode(HttpStatus.CREATED.value())
         ;
 
-        this.mockServer.stop();
+        this.mockServerProduto.stop();
+        this.mockServerCliente.stop();
     }
 
     @Entao("recebo uma resposta que o pedido não foi criado")
@@ -88,10 +107,11 @@ public class CriaPedidoSteps {
                 .statusCode(HttpStatus.CONFLICT.value())
         ;
 
-        this.mockServer.stop();
+        this.mockServerProduto.stop();
+        this.mockServerCliente.stop();
     }
 
-    private ClientAndServer criaMockServer() {
+    private ClientAndServer criaMockServerProduto() {
         final var clientAndServer = ClientAndServer.startClientAndServer(8080);
 
         clientAndServer.when(
@@ -122,6 +142,44 @@ public class CriaPedidoSteps {
                         HttpRequest.request()
                                 .withMethod("GET")
                                 .withPath("/produto/estoque/{ean}/3".replace("{ean}", this.ean.toString()))
+                )
+                .respond(
+                        HttpResponse.response()
+                                .withContentType(org.mockserver.model.MediaType.APPLICATION_JSON)
+                                .withStatusCode(204)
+                );
+
+        return clientAndServer;
+    }
+
+    private ClientAndServer criaMockServerCliente() {
+        final var clientAndServer = ClientAndServer.startClientAndServer(8083);
+
+        clientAndServer.when(
+                        HttpRequest.request()
+                                .withMethod("GET")
+                                .withPath("/cliente/71622958004")
+                )
+                .respond(
+                        HttpResponse.response()
+                                .withContentType(org.mockserver.model.MediaType.APPLICATION_JSON)
+                                .withStatusCode(200)
+                                .withBody("""
+                                            {
+                                                "cpf": "71622958004",
+                                                "nome": "Cliente Teste",
+                                                "enderecoLogradouro": "Rua Teste",
+                                                "enderecoNumero": 123,
+                                                "enderecoSiglaEstado": "SP",
+                                                "dataDeCriacao": "2021-10-10T10:00:00"
+                                            }
+                                        """)
+                );
+
+        clientAndServer.when(
+                        HttpRequest.request()
+                                .withMethod("GET")
+                                .withPath("/cliente/12345678901")
                 )
                 .respond(
                         HttpResponse.response()

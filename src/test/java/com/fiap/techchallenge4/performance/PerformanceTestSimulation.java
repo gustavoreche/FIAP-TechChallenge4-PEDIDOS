@@ -21,7 +21,8 @@ import static io.gatling.javaapi.http.HttpDsl.status;
 public class PerformanceTestSimulation extends Simulation {
 
     private final JdbcTemplate jdbcTemplate = this.criaConexaoComBaseDeDados();
-    private final ClientAndServer mockServer = this.criaMockServer();
+    private final ClientAndServer mockServerProduto = this.criaMockServerProduto();
+    private final ClientAndServer mockServerCliente = this.criaMockServerCliente();
     private final HttpProtocolBuilder httpProtocol = http
             .baseUrl("http://localhost:8081");
 
@@ -127,7 +128,7 @@ public class PerformanceTestSimulation extends Simulation {
         return new JdbcTemplate(dataSource);
     }
 
-    private ClientAndServer criaMockServer() {
+    private ClientAndServer criaMockServerProduto() {
         final var clientAndServer = ClientAndServer.startClientAndServer(8080);
 
         clientAndServer.when(
@@ -140,6 +141,33 @@ public class PerformanceTestSimulation extends Simulation {
                                 .withContentType(MediaType.APPLICATION_JSON)
                                 .withStatusCode(200)
                                 .withBody("true")
+                );
+
+        return clientAndServer;
+    }
+
+    private ClientAndServer criaMockServerCliente() {
+        final var clientAndServer = ClientAndServer.startClientAndServer(8083);
+
+        clientAndServer.when(
+                        HttpRequest.request()
+                                .withMethod("GET")
+                                .withPath("/cliente/71622958004")
+                )
+                .respond(
+                        HttpResponse.response()
+                                .withContentType(MediaType.APPLICATION_JSON)
+                                .withStatusCode(200)
+                                .withBody("""
+                                            {
+                                                "cpf": "71622958004",
+                                                "nome": "Cliente Teste",
+                                                "enderecoLogradouro": "Rua Teste",
+                                                "enderecoNumero": 123,
+                                                "enderecoSiglaEstado": "SP",
+                                                "dataDeCriacao": "2021-10-10T10:00:00"
+                                            }
+                                        """)
                 );
 
         return clientAndServer;

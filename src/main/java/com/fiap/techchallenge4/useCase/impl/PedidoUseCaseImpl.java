@@ -4,6 +4,7 @@ import com.fiap.techchallenge4.domain.IdPedido;
 import com.fiap.techchallenge4.domain.Pedido;
 import com.fiap.techchallenge4.domain.StatusEstoqueEnum;
 import com.fiap.techchallenge4.domain.StatusPedidoEnum;
+import com.fiap.techchallenge4.infrastructure.cliente.client.ClienteClient;
 import com.fiap.techchallenge4.infrastructure.controller.dto.AtualizaEstoqueDTO;
 import com.fiap.techchallenge4.infrastructure.controller.dto.CriaPedidoDTO;
 import com.fiap.techchallenge4.infrastructure.controller.dto.PreparaEntregaDTO;
@@ -20,14 +21,17 @@ import java.util.Objects;
 @Service
 public class PedidoUseCaseImpl implements PedidoUseCase {
 
-    private final ProdutoClient client;
+    private final ProdutoClient clientProduto;
+    private final ClienteClient clientCliente;
     private final StreamBridge streamBridge;
     private final PedidoRepository repository;
 
-    public PedidoUseCaseImpl(final ProdutoClient client,
+    public PedidoUseCaseImpl(final ProdutoClient clientProduto,
+                             final ClienteClient clientCliente,
                              final StreamBridge streamBridge,
                              final PedidoRepository repository) {
-        this.client = client;
+        this.clientProduto = clientProduto;
+        this.clientCliente = clientCliente;
         this.streamBridge = streamBridge;
         this.repository = repository;
     }
@@ -40,10 +44,10 @@ public class PedidoUseCaseImpl implements PedidoUseCase {
                 dadosPedido.quantidade()
         );
         try {
-            // TODO: falta verificar se o cliente existe
+            final var cliente = this.clientCliente.pegaCliente(pedido.getCpfCliente());
 
-            final var temEstoque = this.client.temEstoque(pedido.getEan(), pedido.getQuantidade());
-            if(Objects.nonNull(temEstoque) && temEstoque) {
+            final var temEstoque = this.clientProduto.temEstoque(pedido.getEan(), pedido.getQuantidade());
+            if(Objects.nonNull(cliente) && Objects.nonNull(temEstoque) && temEstoque) {
                 System.out.println("Pedido criado com sucesso");
 
                 final var produtoEntity = PedidoEntity.builder()

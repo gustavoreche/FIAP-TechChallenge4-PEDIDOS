@@ -1,6 +1,8 @@
 package com.fiap.techchallenge4.unitario;
 
 import com.fiap.techchallenge4.domain.StatusPedidoEnum;
+import com.fiap.techchallenge4.infrastructure.cliente.client.ClienteClient;
+import com.fiap.techchallenge4.infrastructure.cliente.client.response.ClienteDTO;
 import com.fiap.techchallenge4.infrastructure.controller.dto.CriaPedidoDTO;
 import com.fiap.techchallenge4.infrastructure.model.PedidoEntity;
 import com.fiap.techchallenge4.infrastructure.produto.client.ProdutoClient;
@@ -27,7 +29,8 @@ public class PedidoUseCaseTest {
     @Test
     public void cria_salvaNaBaseDeDados() {
         // preparação
-        var client = Mockito.mock(ProdutoClient.class);
+        var clientProduto = Mockito.mock(ProdutoClient.class);
+        var clientCliente = Mockito.mock(ClienteClient.class);
         var streamBridge = Mockito.mock(StreamBridge.class);
         var repository = Mockito.mock(PedidoRepository.class);
 
@@ -43,13 +46,25 @@ public class PedidoUseCaseTest {
                         )
                 );
 
-        Mockito.when(client.temEstoque(Mockito.any(), Mockito.any()))
+        Mockito.when(clientCliente.pegaCliente(Mockito.any()))
+                .thenReturn(
+                        new ClienteDTO(
+                                "71622958004",
+                                "teste",
+                                "teste",
+                                100,
+                                "SP",
+                                LocalDateTime.now()
+                        )
+                );
+
+        Mockito.when(clientProduto.temEstoque(Mockito.any(), Mockito.any()))
                 .thenReturn(true);
 
         Mockito.when(streamBridge.send(Mockito.any(), Mockito.any()))
                 .thenReturn(true);
 
-        var service = new PedidoUseCaseImpl(client, streamBridge, repository);
+        var service = new PedidoUseCaseImpl(clientProduto, clientCliente, streamBridge, repository);
 
         // execução
         boolean cria = service.cria(
@@ -68,9 +83,10 @@ public class PedidoUseCaseTest {
     }
 
     @Test
-    public void cria_naoSalvaNaBaseDeDados_semEstoque() {
+    public void cria_naoSalvaNaBaseDeDados_clienteNaoEncontrado() {
         // preparação
-        var client = Mockito.mock(ProdutoClient.class);
+        var clientProduto = Mockito.mock(ProdutoClient.class);
+        var clientCliente = Mockito.mock(ClienteClient.class);
         var streamBridge = Mockito.mock(StreamBridge.class);
         var repository = Mockito.mock(PedidoRepository.class);
 
@@ -86,13 +102,72 @@ public class PedidoUseCaseTest {
                         )
                 );
 
-        Mockito.when(client.temEstoque(Mockito.any(), Mockito.any()))
+        Mockito.when(clientCliente.pegaCliente(Mockito.any()))
+                .thenReturn(null);
+
+        Mockito.when(clientProduto.temEstoque(Mockito.any(), Mockito.any()))
+                .thenReturn(true);
+
+        Mockito.when(streamBridge.send(Mockito.any(), Mockito.any()))
+                .thenReturn(true);
+
+        var service = new PedidoUseCaseImpl(clientProduto, clientCliente, streamBridge, repository);
+
+        // execução
+        boolean cria = service.cria(
+                new CriaPedidoDTO(
+                        7894900011517L,
+                        "71622958004",
+                        100L
+                )
+        );
+
+        // avaliação
+        verify(repository, times(0)).save(Mockito.any());
+        verify(streamBridge, times(0)).send(Mockito.any(), Mockito.any());
+
+        Assertions.assertFalse(cria);
+    }
+
+    @Test
+    public void cria_naoSalvaNaBaseDeDados_semEstoque() {
+        // preparação
+        var clientProduto = Mockito.mock(ProdutoClient.class);
+        var clientCliente = Mockito.mock(ClienteClient.class);
+        var streamBridge = Mockito.mock(StreamBridge.class);
+        var repository = Mockito.mock(PedidoRepository.class);
+
+        Mockito.when(repository.save(Mockito.any()))
+                .thenReturn(
+                        new PedidoEntity(
+                                1L,
+                                "71622958004",
+                                7894900011517L,
+                                100L,
+                                StatusPedidoEnum.CRIADO,
+                                LocalDateTime.now()
+                        )
+                );
+
+        Mockito.when(clientCliente.pegaCliente(Mockito.any()))
+                .thenReturn(
+                        new ClienteDTO(
+                                "71622958004",
+                                "teste",
+                                "teste",
+                                100,
+                                "SP",
+                                LocalDateTime.now()
+                        )
+                );
+
+        Mockito.when(clientProduto.temEstoque(Mockito.any(), Mockito.any()))
                 .thenReturn(false);
 
         Mockito.when(streamBridge.send(Mockito.any(), Mockito.any()))
                 .thenReturn(true);
 
-        var service = new PedidoUseCaseImpl(client, streamBridge, repository);
+        var service = new PedidoUseCaseImpl(clientProduto, clientCliente, streamBridge, repository);
 
         // execução
         boolean cria = service.cria(
@@ -113,7 +188,8 @@ public class PedidoUseCaseTest {
     @Test
     public void cria_naoSalvaNaBaseDeDados_naoEncontrouProduto() {
         // preparação
-        var client = Mockito.mock(ProdutoClient.class);
+        var clientProduto = Mockito.mock(ProdutoClient.class);
+        var clientCliente = Mockito.mock(ClienteClient.class);
         var streamBridge = Mockito.mock(StreamBridge.class);
         var repository = Mockito.mock(PedidoRepository.class);
 
@@ -129,13 +205,25 @@ public class PedidoUseCaseTest {
                         )
                 );
 
-        Mockito.when(client.temEstoque(Mockito.any(), Mockito.any()))
+        Mockito.when(clientCliente.pegaCliente(Mockito.any()))
+                .thenReturn(
+                        new ClienteDTO(
+                                "71622958004",
+                                "teste",
+                                "teste",
+                                100,
+                                "SP",
+                                LocalDateTime.now()
+                        )
+                );
+
+        Mockito.when(clientProduto.temEstoque(Mockito.any(), Mockito.any()))
                 .thenReturn(null);
 
         Mockito.when(streamBridge.send(Mockito.any(), Mockito.any()))
                 .thenReturn(true);
 
-        var service = new PedidoUseCaseImpl(client, streamBridge, repository);
+        var service = new PedidoUseCaseImpl(clientProduto, clientCliente, streamBridge, repository);
 
         // execução
         boolean cria = service.cria(
@@ -156,7 +244,8 @@ public class PedidoUseCaseTest {
     @Test
     public void cancela_salvaNaBaseDeDados() {
         // preparação
-        var client = Mockito.mock(ProdutoClient.class);
+        var clientProduto = Mockito.mock(ProdutoClient.class);
+        var clientCliente = Mockito.mock(ClienteClient.class);
         var streamBridge = Mockito.mock(StreamBridge.class);
         var repository = Mockito.mock(PedidoRepository.class);
 
@@ -188,7 +277,7 @@ public class PedidoUseCaseTest {
         Mockito.when(streamBridge.send(Mockito.any(), Mockito.any()))
                 .thenReturn(true);
 
-        var service = new PedidoUseCaseImpl(client, streamBridge, repository);
+        var service = new PedidoUseCaseImpl(clientProduto, clientCliente, streamBridge, repository);
 
         // execução
         boolean cria = service.cancela(1L);
@@ -204,7 +293,8 @@ public class PedidoUseCaseTest {
     @Test
     public void cancela_naoSalvaNaBaseDeDados_statusPedidoDiferenteDeCriadoOuPedidoNaoEncontrado() {
         // preparação
-        var client = Mockito.mock(ProdutoClient.class);
+        var clientProduto = Mockito.mock(ProdutoClient.class);
+        var clientCliente = Mockito.mock(ClienteClient.class);
         var streamBridge = Mockito.mock(StreamBridge.class);
         var repository = Mockito.mock(PedidoRepository.class);
 
@@ -227,7 +317,7 @@ public class PedidoUseCaseTest {
         Mockito.when(streamBridge.send(Mockito.any(), Mockito.any()))
                 .thenReturn(true);
 
-        var service = new PedidoUseCaseImpl(client, streamBridge, repository);
+        var service = new PedidoUseCaseImpl(clientProduto, clientCliente, streamBridge, repository);
 
         // execução
         boolean cria = service.cancela(1L);
@@ -243,7 +333,8 @@ public class PedidoUseCaseTest {
     @Test
     public void atualizaParaEmTransporte_salvaNaBaseDeDados() {
         // preparação
-        var client = Mockito.mock(ProdutoClient.class);
+        var clientProduto = Mockito.mock(ProdutoClient.class);
+        var clientCliente = Mockito.mock(ClienteClient.class);
         var streamBridge = Mockito.mock(StreamBridge.class);
         var repository = Mockito.mock(PedidoRepository.class);
 
@@ -272,7 +363,7 @@ public class PedidoUseCaseTest {
                         )
                 );
 
-        var service = new PedidoUseCaseImpl(client, streamBridge, repository);
+        var service = new PedidoUseCaseImpl(clientProduto, clientCliente, streamBridge, repository);
 
         // execução
         boolean atualiza = service.atualizaParaEmTransporte(1L);
@@ -288,7 +379,8 @@ public class PedidoUseCaseTest {
     @Test
     public void atualizaParaEmTransporte_naoSalvaNaBaseDeDados_statusPedidoDiferenteDeCriadoOuPedidoNaoEncontrado() {
         // preparação
-        var client = Mockito.mock(ProdutoClient.class);
+        var clientProduto = Mockito.mock(ProdutoClient.class);
+        var clientCliente = Mockito.mock(ClienteClient.class);
         var streamBridge = Mockito.mock(StreamBridge.class);
         var repository = Mockito.mock(PedidoRepository.class);
 
@@ -308,7 +400,7 @@ public class PedidoUseCaseTest {
                         Optional.empty()
                 );
 
-        var service = new PedidoUseCaseImpl(client, streamBridge, repository);
+        var service = new PedidoUseCaseImpl(clientProduto, clientCliente, streamBridge, repository);
 
         // execução
         boolean atualiza = service.atualizaParaEmTransporte(1L);
@@ -328,7 +420,8 @@ public class PedidoUseCaseTest {
                                                            String cpfCliente,
                                                            Long quantidade) {
         // preparação
-        var client = Mockito.mock(ProdutoClient.class);
+        var clientProduto = Mockito.mock(ProdutoClient.class);
+        var clientCliente = Mockito.mock(ClienteClient.class);
         var streamBridge = Mockito.mock(StreamBridge.class);
         var repository = Mockito.mock(PedidoRepository.class);
 
@@ -344,13 +437,25 @@ public class PedidoUseCaseTest {
                         )
                 );
 
-        Mockito.when(client.temEstoque(Mockito.any(), Mockito.any()))
+        Mockito.when(clientCliente.pegaCliente(Mockito.any()))
+                .thenReturn(
+                        new ClienteDTO(
+                                "71622958004",
+                                "teste",
+                                "teste",
+                                100,
+                                "SP",
+                                LocalDateTime.now()
+                        )
+                );
+
+        Mockito.when(clientProduto.temEstoque(Mockito.any(), Mockito.any()))
                 .thenReturn(true);
 
         Mockito.when(streamBridge.send(Mockito.any(), Mockito.any()))
                 .thenReturn(true);
 
-        var service = new PedidoUseCaseImpl(client, streamBridge, repository);
+        var service = new PedidoUseCaseImpl(clientProduto, clientCliente, streamBridge, repository);
 
         // execução e avaliação
         var excecao = Assertions.assertThrows(RuntimeException.class, () -> {
@@ -374,7 +479,8 @@ public class PedidoUseCaseTest {
     })
     public void cancela_camposInvalidos_naoBuscaNaBaseDeDados(Long idPedido) {
         // preparação
-        var client = Mockito.mock(ProdutoClient.class);
+        var clientProduto = Mockito.mock(ProdutoClient.class);
+        var clientCliente = Mockito.mock(ClienteClient.class);
         var streamBridge = Mockito.mock(StreamBridge.class);
         var repository = Mockito.mock(PedidoRepository.class);
 
@@ -393,7 +499,7 @@ public class PedidoUseCaseTest {
         Mockito.when(streamBridge.send(Mockito.any(), Mockito.any()))
                 .thenReturn(true);
 
-        var service = new PedidoUseCaseImpl(client, streamBridge, repository);
+        var service = new PedidoUseCaseImpl(clientProduto, clientCliente, streamBridge, repository);
 
         // execução e avaliação
         var excecao = Assertions.assertThrows(RuntimeException.class, () -> {
@@ -414,7 +520,8 @@ public class PedidoUseCaseTest {
     })
     public void atualizaParaEmTransporte_camposInvalidos_naoBuscaNaBaseDeDados(Long idPedido) {
         // preparação
-        var client = Mockito.mock(ProdutoClient.class);
+        var clientProduto = Mockito.mock(ProdutoClient.class);
+        var clientCliente = Mockito.mock(ClienteClient.class);
         var streamBridge = Mockito.mock(StreamBridge.class);
         var repository = Mockito.mock(PedidoRepository.class);
 
@@ -430,7 +537,7 @@ public class PedidoUseCaseTest {
                         )
                 );
 
-        var service = new PedidoUseCaseImpl(client, streamBridge, repository);
+        var service = new PedidoUseCaseImpl(clientProduto, clientCliente, streamBridge, repository);
 
         // execução e avaliação
         var excecao = Assertions.assertThrows(RuntimeException.class, () -> {
