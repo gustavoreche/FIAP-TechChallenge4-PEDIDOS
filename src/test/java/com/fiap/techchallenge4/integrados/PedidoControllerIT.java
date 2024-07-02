@@ -3,6 +3,8 @@ package com.fiap.techchallenge4.integrados;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fiap.techchallenge4.domain.StatusEstoqueEnum;
 import com.fiap.techchallenge4.domain.StatusPedidoEnum;
+import com.fiap.techchallenge4.infrastructure.cliente.client.ClienteClient;
+import com.fiap.techchallenge4.infrastructure.cliente.client.response.ClienteDTO;
 import com.fiap.techchallenge4.infrastructure.controller.dto.AtualizaEstoqueDTO;
 import com.fiap.techchallenge4.infrastructure.controller.dto.CriaPedidoDTO;
 import com.fiap.techchallenge4.infrastructure.controller.dto.PreparaEntregaDTO;
@@ -54,7 +56,11 @@ public class PedidoControllerIT {
 
     @Autowired
     @MockBean
-    ProdutoClient client;
+    ProdutoClient clientProduto;
+
+    @Autowired
+    @MockBean
+    ClienteClient clientCliente;
 
     @BeforeEach
     void inicializaLimpezaDoDatabase() {
@@ -68,7 +74,18 @@ public class PedidoControllerIT {
 
     @Test
     public void cria_deveRetornar201_salvaNaBaseDeDados() throws Exception {
-        Mockito.when(this.client.temEstoque(7894900011517L, 3L))
+        Mockito.when(this.clientCliente.pegaCliente("71622958004"))
+                .thenReturn(
+                        new ClienteDTO(
+                                "71622958004",
+                                "teste",
+                                "teste",
+                                100,
+                                "SP",
+                                LocalDateTime.now()
+                        )
+                );
+        Mockito.when(this.clientProduto.temEstoque(7894900011517L, 3L))
                 .thenReturn(
                         true
                 );
@@ -120,8 +137,67 @@ public class PedidoControllerIT {
     }
 
     @Test
+    public void cria_deveRetornar409_naoSalvaNaBaseDeDados_clienteNaoEncontrado() throws Exception {
+        Mockito.when(this.clientCliente.pegaCliente("71622958004"))
+                .thenReturn(null);
+        Mockito.when(this.clientProduto.temEstoque(7894900011517L, 3L))
+                .thenReturn(
+                        true
+                );
+        Mockito.when(this.streamBridge.send("produto-atualiza-estoque", new AtualizaEstoqueDTO(
+                        7894900011517L,
+                        3L,
+                        StatusEstoqueEnum.RETIRA_DO_ESTOQUE)))
+                .thenReturn(
+                        true
+                );
+        Mockito.when(this.streamBridge.send("logistica-prepara-entrega", new PreparaEntregaDTO(
+                        1L,
+                        "71622958004",
+                        7894900011517L,
+                        1L)))
+                .thenReturn(
+                        true
+                );
+
+        var request = new CriaPedidoDTO(
+                7894900011517L,
+                "71622958004",
+                3L
+        );
+        var objectMapper = this.objectMapper
+                .writer()
+                .withDefaultPrettyPrinter();
+        var jsonRequest = objectMapper.writeValueAsString(request);
+
+        this.mockMvc
+                .perform(MockMvcRequestBuilders.post(URL_PEDIDOS)
+                        .content(jsonRequest)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(MockMvcResultMatchers
+                        .status()
+                        .isConflict()
+                )
+                .andReturn();
+
+        Assertions.assertEquals(0, this.repository.findAll().size());
+        verify(streamBridge, times(0)).send(Mockito.any(), Mockito.any());
+    }
+
+    @Test
     public void cria_deveRetornar409_naoSalvaNaBaseDeDados_semEstoque() throws Exception {
-        Mockito.when(this.client.temEstoque(7894900011517L, 3L))
+        Mockito.when(this.clientCliente.pegaCliente("71622958004"))
+                .thenReturn(
+                        new ClienteDTO(
+                                "71622958004",
+                                "teste",
+                                "teste",
+                                100,
+                                "SP",
+                                LocalDateTime.now()
+                        )
+                );
+        Mockito.when(this.clientProduto.temEstoque(7894900011517L, 3L))
                 .thenReturn(
                         false
                 );
@@ -166,11 +242,73 @@ public class PedidoControllerIT {
     }
 
     @Test
-    public void cria_deveRetornar409_naoSalvaNaBaseDeDados_apiIndisponivel() throws Exception {
+    public void cria_deveRetornar409_naoSalvaNaBaseDeDados_apiClienteIndisponivel() throws Exception {
         Mockito.doThrow(
                         new RuntimeException("API INDISPONIVEL!!")
                 )
-                .when(this.client)
+                .when(this.clientCliente)
+                .pegaCliente("71622958004");
+        Mockito.when(this.clientProduto.temEstoque(7894900011517L, 3L))
+                .thenReturn(
+                        true
+                );
+        Mockito.when(this.streamBridge.send("produto-atualiza-estoque", new AtualizaEstoqueDTO(
+                        7894900011517L,
+                        3L,
+                        StatusEstoqueEnum.RETIRA_DO_ESTOQUE)))
+                .thenReturn(
+                        true
+                );
+        Mockito.when(this.streamBridge.send("logistica-prepara-entrega", new PreparaEntregaDTO(
+                        1L,
+                        "71622958004",
+                        7894900011517L,
+                        1L)))
+                .thenReturn(
+                        true
+                );
+
+        var request = new CriaPedidoDTO(
+                7894900011517L,
+                "71622958004",
+                3L
+        );
+        var objectMapper = this.objectMapper
+                .writer()
+                .withDefaultPrettyPrinter();
+        var jsonRequest = objectMapper.writeValueAsString(request);
+
+        this.mockMvc
+                .perform(MockMvcRequestBuilders.post(URL_PEDIDOS)
+                        .content(jsonRequest)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(MockMvcResultMatchers
+                        .status()
+                        .isConflict()
+                )
+                .andReturn();
+
+        Assertions.assertEquals(0, this.repository.findAll().size());
+        verify(streamBridge, times(0)).send(Mockito.any(), Mockito.any());
+    }
+
+    @Test
+    public void cria_deveRetornar409_naoSalvaNaBaseDeDados_apiProdutoIndisponivel() throws Exception {
+        Mockito.when(this.clientCliente.pegaCliente("71622958004"))
+                .thenReturn(
+                        new ClienteDTO(
+                                "71622958004",
+                                "teste",
+                                "teste",
+                                100,
+                                "SP",
+                                LocalDateTime.now()
+                        )
+                );
+        Mockito.doThrow(
+                        new RuntimeException("API INDISPONIVEL!!")
+                )
+                .when(this.clientProduto)
                 .temEstoque(7894900011517L, 3L);
         Mockito.when(this.streamBridge.send("produto-atualiza-estoque", new AtualizaEstoqueDTO(
                 7894900011517L,
@@ -214,7 +352,18 @@ public class PedidoControllerIT {
 
     @Test
     public void cria_deveRetornar409_naoSalvaNaBaseDeDados_naoEncontrouProduto() throws Exception {
-        Mockito.when(this.client.temEstoque(7894900011517L, 3L))
+        Mockito.when(this.clientCliente.pegaCliente("71622958004"))
+                .thenReturn(
+                        new ClienteDTO(
+                                "71622958004",
+                                "teste",
+                                "teste",
+                                100,
+                                "SP",
+                                LocalDateTime.now()
+                        )
+                );
+        Mockito.when(this.clientProduto.temEstoque(7894900011517L, 3L))
                 .thenReturn(
                         null
                 );

@@ -7,6 +7,11 @@ Funcionalidade: Teste de criar o pedido
     Quando crio esse pedido
     Entao recebo uma resposta que o pedido foi criado com sucesso
 
+  Cenário: Cria pedido com cliente não cadastrado
+    Dado que informo um cliente não cadastrado
+    Quando crio esse pedido
+    Entao recebo uma resposta que o pedido não foi criado
+
   Cenário: Cria pedido com produto sem estoque
     Dado que informo um produto sem estoque
     Quando crio esse pedido
