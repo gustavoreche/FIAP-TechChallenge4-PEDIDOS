@@ -1,11 +1,10 @@
 package com.fiap.techchallenge4.useCase.impl;
 
-import com.fiap.techchallenge4.domain.IdPedido;
-import com.fiap.techchallenge4.domain.Pedido;
-import com.fiap.techchallenge4.domain.StatusEstoqueEnum;
-import com.fiap.techchallenge4.domain.StatusPedidoEnum;
+import com.fiap.techchallenge4.domain.*;
 import com.fiap.techchallenge4.infrastructure.cliente.client.ClienteClient;
+import com.fiap.techchallenge4.infrastructure.consumer.response.AtualizaPedidoDTO;
 import com.fiap.techchallenge4.infrastructure.controller.dto.AtualizaEstoqueDTO;
+import com.fiap.techchallenge4.infrastructure.controller.dto.CancelaEntregaDTO;
 import com.fiap.techchallenge4.infrastructure.controller.dto.CriaPedidoDTO;
 import com.fiap.techchallenge4.infrastructure.controller.dto.PreparaEntregaDTO;
 import com.fiap.techchallenge4.infrastructure.model.PedidoEntity;
@@ -106,11 +105,8 @@ public class PedidoUseCaseImpl implements PedidoUseCase {
                 pedido.getQuantidade(),
                 StatusEstoqueEnum.VOLTA_PARA_O_ESTOQUE));
 
-        this.streamBridge.send("logistica-prepara-entrega", new PreparaEntregaDTO(
-                idPedido,
-                produtoEntity.getCpfCliente(),
-                produtoEntity.getEan(),
-                produtoEntity.getQuantidade()
+        this.streamBridge.send("logistica-cancela-entrega", new CancelaEntregaDTO(
+                idPedidoObjeto.getNumero()
                 )
         );
         return true;
@@ -118,13 +114,19 @@ public class PedidoUseCaseImpl implements PedidoUseCase {
     }
 
     @Override
-    public boolean atualizaParaEmTransporte(final Long idPedido) {
-        final var idPedidoObjeto = new IdPedido(idPedido);
+    public void atualiza(final AtualizaPedidoDTO evento) {
+        final var idPedidoObjeto = new IdPedido(evento.idDoPedido());
 
-        final var pedidoNaBase = this.repository.findByIdAndStatusPedido(idPedidoObjeto.getNumero(), StatusPedidoEnum.CRIADO);
+        final var status = evento.statusPedido().equals(StatusAtualizaPedidoEnum.EM_TRANSPORTE)
+                ? StatusPedidoEnum.CRIADO
+                : evento.statusPedido().equals(StatusAtualizaPedidoEnum.ENTREGUE)
+                ? StatusPedidoEnum.EM_TRANSPORTE
+                : null;
+
+        final var pedidoNaBase = this.repository.findByIdAndStatusPedido(idPedidoObjeto.getNumero(), status);
         if(pedidoNaBase.isEmpty()) {
             System.out.println("Pedido não está cadastrado ou está com outros STATUS");
-            return false;
+            return;
         }
         final var pedido = pedidoNaBase.get();
 
@@ -133,11 +135,10 @@ public class PedidoUseCaseImpl implements PedidoUseCase {
                 .cpfCliente(pedido.getCpfCliente())
                 .ean(pedido.getEan())
                 .quantidade(pedido.getQuantidade())
-                .statusPedido(StatusPedidoEnum.EM_TRANSPORTE)
+                .statusPedido(StatusPedidoEnum.valueOf(evento.statusPedido().name()))
                 .dataDeCriacao(LocalDateTime.now())
                 .build();
         this.repository.save(produtoEntity);
-        return true;
     }
 
 }
