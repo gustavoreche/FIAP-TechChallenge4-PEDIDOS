@@ -1,5 +1,6 @@
 package com.fiap.techchallenge4.useCase;
 
+import com.fiap.techchallenge4.infrastructure.consumer.response.AtualizaPedidoDTO;
 import com.fiap.techchallenge4.infrastructure.controller.dto.CriaPedidoDTO;
 
 public interface PedidoUseCase {
@@ -8,5 +9,5 @@ public interface PedidoUseCase {
 
     boolean cancela(final Long idPedido);
 
-    boolean atualizaParaEmTransporte(final Long idPedido);
+    void atualiza(final AtualizaPedidoDTO evento);
 }

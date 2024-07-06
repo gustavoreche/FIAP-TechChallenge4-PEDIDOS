@@ -43,11 +43,6 @@ public class PerformanceTestSimulation extends Simulation {
             .header("Content-Type", "application/json")
             .check(status().is(200));
 
-    ActionBuilder atualizaParaEmTransportePedidoRequest = http("Atualiza para em transporte pedido")
-            .put("/pedido/${idPedido}")
-            .header("Content-Type", "application/json")
-            .check(status().is(200));
-
     ScenarioBuilder cenarioCriaPedido = scenario("Cria pedido")
             .exec(criaPedidoRequest);
 
@@ -65,20 +60,6 @@ public class PerformanceTestSimulation extends Simulation {
             })
             .exec(cancelaPedidoRequest);
 
-    ScenarioBuilder cenarioAtualizaParaEmTransportePedido = scenario("Atualiza para em transporte pedido")
-            .exec(session -> {
-                long idPedido = System.currentTimeMillis() + 222222222L;
-
-                jdbcTemplate.execute("""
-                INSERT INTO tb_pedido (id, cpf_cliente,data_de_criacao,ean,quantidade,status_pedido) VALUES
-                	 (%s,'71622958004','2024-06-26 22:57:46.037',7894900011517,30,'CRIADO');
-                """
-                        .formatted(idPedido));
-
-                return session.set("idPedido", idPedido);
-            })
-            .exec(atualizaParaEmTransportePedidoRequest);
-
 
     {
 
@@ -93,15 +74,6 @@ public class PerformanceTestSimulation extends Simulation {
                                 .to(1)
                                 .during(Duration.ofSeconds(10))),
                 cenarioCancelaPedido.injectOpen(
-                        rampUsersPerSec(1)
-                                .to(10)
-                                .during(Duration.ofSeconds(10)),
-                        constantUsersPerSec(10)
-                                .during(Duration.ofSeconds(20)),
-                        rampUsersPerSec(10)
-                                .to(1)
-                                .during(Duration.ofSeconds(10))),
-                cenarioAtualizaParaEmTransportePedido.injectOpen(
                         rampUsersPerSec(1)
                                 .to(10)
                                 .during(Duration.ofSeconds(10)),
