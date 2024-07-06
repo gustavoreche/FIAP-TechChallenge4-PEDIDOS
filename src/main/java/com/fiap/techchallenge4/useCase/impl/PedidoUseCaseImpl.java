@@ -117,9 +117,9 @@ public class PedidoUseCaseImpl implements PedidoUseCase {
     public void atualiza(final AtualizaPedidoDTO evento) {
         final var idPedidoObjeto = new IdPedido(evento.idDoPedido());
 
-        final var status = evento.statusPedido().equals(StatusAtualizaPedidoEnum.EM_TRANSPORTE)
+        final var status = evento.statusEntrega().equals(StatusAtualizaPedidoEnum.EM_TRANSPORTE)
                 ? StatusPedidoEnum.CRIADO
-                : evento.statusPedido().equals(StatusAtualizaPedidoEnum.ENTREGUE)
+                : evento.statusEntrega().equals(StatusAtualizaPedidoEnum.ENTREGUE)
                 ? StatusPedidoEnum.EM_TRANSPORTE
                 : null;
 
@@ -135,7 +135,7 @@ public class PedidoUseCaseImpl implements PedidoUseCase {
                 .cpfCliente(pedido.getCpfCliente())
                 .ean(pedido.getEan())
                 .quantidade(pedido.getQuantidade())
-                .statusPedido(StatusPedidoEnum.valueOf(evento.statusPedido().name()))
+                .statusPedido(StatusPedidoEnum.valueOf(evento.statusEntrega().name()))
                 .dataDeCriacao(LocalDateTime.now())
                 .build();
         this.repository.save(produtoEntity);
